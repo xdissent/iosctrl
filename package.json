@@ -10,7 +10,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "NodObjC": "0.0.15"
+    "debug": "~0.7.2",
+    "NodObjC": "git+https://github.com/xdissent/NodObjC.git#develop"
   },
   "devDependencies": {
     "coffee-script": "~1.6.3"
