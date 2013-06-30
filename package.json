@@ -4,7 +4,7 @@
   "description": "Node module for controlling the Xcode iOS Simulator",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "coffeelint -r src",
     "prepublish": "coffee -cbo lib src"
   },
   "repository": {
@@ -30,6 +30,7 @@
   },
   "devDependencies": {
     "coffee-script": "~1.6.3",
-    "groc": "~0.4.0"
+    "groc": "~0.4.0",
+    "coffeelint": "~0.5.6"
   }
 }

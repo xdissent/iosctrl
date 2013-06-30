@@ -57,7 +57,7 @@ class Simulator
     throw new Error 'not open' if @state is 'ready'
     @debug 'close'
     @state = 'closing'
-    return Q.fcall(=> @state = 'ready') unless @_child?      
+    return Q.fcall(=> @state = 'ready') unless @_child?
     deferred = Q.defer()
     @_child.on 'exit', =>
       @debug 'close resolved'

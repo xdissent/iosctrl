@@ -19,8 +19,10 @@ Session.addMethod 'start', 'v@:', (self) ->
   debug "start"
 
   # Initialize variables for the simulator config.
-  appSpec = $.DTiPhoneSimulatorApplicationSpecifier 'specifierWithApplicationPath',
-    $ '/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform//Developer/SDKs/iPhoneSimulator6.1.sdk/Applications/MobileSafari.app'
+  app = $.DTiPhoneSimulatorApplicationSpecifier 'specifierWithApplicationPath',
+    $ '/Applications/Xcode.app/Contents/Developer/Platforms/' +
+      'iPhoneSimulator.platform//Developer/SDKs/iPhoneSimulator6.1.sdk/' +
+      'Applications/MobileSafari.app'
   sysRoot = $.DTiPhoneSimulatorSystemRoot 'defaultRoot'
   env = $.NSMutableDictionary 'dictionary'
   args = $.NSMutableArray 'arrayWithCapacity', 2
@@ -29,7 +31,7 @@ Session.addMethod 'start', 'v@:', (self) ->
 
   # Create the simulator configuration.
   config = $.DTiPhoneSimulatorSessionConfig('alloc')('init') 'autorelease'
-  config 'setApplicationToSimulateOnStart', appSpec
+  config 'setApplicationToSimulateOnStart', app
   config 'setSimulatedSystemRoot', sysRoot
   config 'setSimulatedApplicationShouldWaitForDebugger', 0
   config 'setSimulatedApplicationLaunchArgs', args
@@ -67,5 +69,5 @@ Session.addMethod 'session:didEndWithError:', 'v@:@@', ->
   debug 'ended'
   process.send 'ended' if process.send
 
-# Register the Session class in the 
+# Register the Session class with the ObjC bridge.
 Session.register()
