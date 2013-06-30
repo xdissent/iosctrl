@@ -25,7 +25,8 @@
   },
   "dependencies": {
     "debug": "~0.7.2",
-    "NodObjC": "git+https://github.com/xdissent/NodObjC.git#develop"
+    "NodObjC": "git+https://github.com/xdissent/NodObjC.git#develop",
+    "q": "~0.9.6"
   },
   "devDependencies": {
     "coffee-script": "~1.6.3",

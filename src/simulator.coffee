@@ -1,6 +1,7 @@
 path = require 'path'
 child_process = require 'child_process'
 debug = require 'debug'
+Q = require 'q'
 
 # The path to the `sim` module, depending on whether this module was included
 # as javascript or coffeescript.
@@ -22,28 +23,48 @@ class Simulator
     throw new Error 'not ready' unless @state is 'ready'
     @debug "open: #{url}"
     @state = 'opening'
+    deferred = Q.defer()
     @_child = child_process.fork simPath, [url]
-    @_child.on 'exit', =>
-      @debug 'exit'
-      clearTimeout @_killTimeout if @_killTimeout?
-      @_child = null
-      @state = 'ready'
-    @_child.on 'message', (msg) =>
-      @debug "message: #{msg}"
-      @state = 'open' if msg is 'started'
-      @_child.send 'exit' if msg is 'ended'
-    @
+    exit = =>
+      @debug 'open rejected'
+      deferred.reject 'exited'
+      @_exit()
+    message = (msg) =>
+      if msg is 'started'
+        @_child.removeListener 'message', message
+        @_child.removeListener 'exit', exit
+        @_child.on 'message', @_message.bind @
+        @_child.on 'exit', @_exit.bind @
+        @debug 'open resolved'
+        deferred.resolve true
+      @_message msg
+    @_child.on 'exit', exit
+    @_child.on 'message', message
+    deferred.promise
+
+  _exit: ->
+    @debug '_exit'
+    clearTimeout @_killTimeout if @_killTimeout?
+    @_child = null
+    @state = 'ready'
+
+  _message: (msg) ->
+    @debug "_message: #{msg}"
+    @state = 'open' if msg is 'started'
+    @_child.send 'exit' if msg is 'ended'
 
   close: ->
     throw new Error 'not open' if @state is 'ready'
     @debug 'close'
-    if @_child?
-      @state = 'closing'
-      @_child.send 'stop'
-      @_killLater()
-    else
-      @state = 'ready'
-    @
+    @state = 'closing'
+    return Q.fcall(=> @state = 'ready') unless @_child?      
+    deferred = Q.defer()
+    @_child.on 'exit', =>
+      @debug 'close resolved'
+      deferred.resolve true
+    @_child.send 'stop'
+    @_killLater()
+    deferred.promise
 
   _killLater: ->
     return false if @_killTimeout?
@@ -51,6 +72,6 @@ class Simulator
       @_killTimeout = null
       @debug 'force killing'
       @_child.kill()
-    , 10000
+    , 30000
 
 module.exports = Simulator
