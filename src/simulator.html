@@ -1,0 +1,73 @@
+<!DOCTYPE html><html lang="en"><head><title>src/simulator</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../"><meta name="groc-document-path" content="src/simulator"><meta name="groc-project-path" content="src/simulator.coffee"><meta name="groc-github-url" content="https://github.com/xdissent/iosctrl"><link rel="stylesheet" type="text/css" media="all" href="../assets/style.css"><script type="text/javascript" src="../assets/behavior.js"></script><body><div id="meta"><div class="file-path"><a href="https://github.com/xdissent/iosctrl/blob/master/src/simulator.coffee">src/simulator.coffee</a></div></div><div id="document"><div class="segment"><div class="code"><div class="wrapper"><span class="nv">path = </span><span class="nx">require</span> <span class="s">&#39;path&#39;</span>
+<span class="nv">child_process = </span><span class="nx">require</span> <span class="s">&#39;child_process&#39;</span>
+<span class="nv">debug = </span><span class="nx">require</span> <span class="s">&#39;debug&#39;</span>
+<span class="nv">Q = </span><span class="nx">require</span> <span class="s">&#39;q&#39;</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>The path to the <code>sim</code> module, depending on whether this module was included
+as javascript or coffeescript.</p></div></div><div class="code"><div class="wrapper"><span class="nv">simPath = </span><span class="nx">path</span><span class="p">.</span><span class="nx">join</span> <span class="nx">__dirname</span><span class="p">,</span> <span class="s">&quot;sim</span><span class="si">#{</span><span class="nx">path</span><span class="p">.</span><span class="nx">extname</span> <span class="nx">__filename</span><span class="si">}</span><span class="s">&quot;</span>
+
+<span class="k">class</span> <span class="nx">Simulator</span>
+  <span class="nv">constructor: </span><span class="nf">(url) -&gt;</span>
+    <span class="nx">@debug</span> <span class="s">&#39;new&#39;</span>
+    <span class="vi">@_child = </span><span class="kc">null</span>
+    <span class="vi">@state = </span><span class="s">&#39;ready&#39;</span>
+    <span class="nx">@open</span> <span class="nx">url</span> <span class="k">if</span> <span class="nx">url</span><span class="o">?</span>
+
+  <span class="nv">debug: </span><span class="nf">-&gt;</span>
+    <span class="nx">@_debug</span> <span class="o">?=</span> <span class="nx">debug</span> <span class="s">&#39;iosctrl:simulator&#39;</span>
+    <span class="nx">@_debug</span> <span class="nx">arguments</span><span class="p">...</span>
+
+  <span class="nv">open: </span><span class="nf">(url) -&gt;</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nb">Error</span> <span class="s">&#39;not ready&#39;</span> <span class="k">unless</span> <span class="nx">@state</span> <span class="o">is</span> <span class="s">&#39;ready&#39;</span>
+    <span class="nx">@debug</span> <span class="s">&quot;open: </span><span class="si">#{</span><span class="nx">url</span><span class="si">}</span><span class="s">&quot;</span>
+    <span class="vi">@state = </span><span class="s">&#39;opening&#39;</span>
+    <span class="nv">deferred = </span><span class="nx">Q</span><span class="p">.</span><span class="nx">defer</span><span class="p">()</span>
+    <span class="vi">@_child = </span><span class="nx">child_process</span><span class="p">.</span><span class="nx">fork</span> <span class="nx">simPath</span><span class="p">,</span> <span class="p">[</span><span class="nx">url</span><span class="p">]</span>
+    <span class="nv">exit = </span><span class="o">=&gt;</span>
+      <span class="nx">@debug</span> <span class="s">&#39;open rejected&#39;</span>
+      <span class="nx">deferred</span><span class="p">.</span><span class="nx">reject</span> <span class="s">&#39;exited&#39;</span>
+      <span class="nx">@_exit</span><span class="p">()</span>
+    <span class="nv">message = </span><span class="nf">(msg) =&gt;</span>
+      <span class="k">if</span> <span class="nx">msg</span> <span class="o">is</span> <span class="s">&#39;started&#39;</span>
+        <span class="nx">@_child</span><span class="p">.</span><span class="nx">removeListener</span> <span class="s">&#39;message&#39;</span><span class="p">,</span> <span class="nx">message</span>
+        <span class="nx">@_child</span><span class="p">.</span><span class="nx">removeListener</span> <span class="s">&#39;exit&#39;</span><span class="p">,</span> <span class="nx">exit</span>
+        <span class="nx">@_child</span><span class="p">.</span><span class="nx">on</span> <span class="s">&#39;message&#39;</span><span class="p">,</span> <span class="nx">@_message</span><span class="p">.</span><span class="nx">bind</span> <span class="nx">@</span>
+        <span class="nx">@_child</span><span class="p">.</span><span class="nx">on</span> <span class="s">&#39;exit&#39;</span><span class="p">,</span> <span class="nx">@_exit</span><span class="p">.</span><span class="nx">bind</span> <span class="nx">@</span>
+        <span class="nx">@debug</span> <span class="s">&#39;open resolved&#39;</span>
+        <span class="nx">deferred</span><span class="p">.</span><span class="nx">resolve</span> <span class="kc">true</span>
+      <span class="nx">@_message</span> <span class="nx">msg</span>
+    <span class="nx">@_child</span><span class="p">.</span><span class="nx">on</span> <span class="s">&#39;exit&#39;</span><span class="p">,</span> <span class="nx">exit</span>
+    <span class="nx">@_child</span><span class="p">.</span><span class="nx">on</span> <span class="s">&#39;message&#39;</span><span class="p">,</span> <span class="nx">message</span>
+    <span class="nx">deferred</span><span class="p">.</span><span class="nx">promise</span>
+
+  <span class="nv">_exit: </span><span class="nf">-&gt;</span>
+    <span class="nx">@debug</span> <span class="s">&#39;_exit&#39;</span>
+    <span class="nx">clearTimeout</span> <span class="nx">@_killTimeout</span> <span class="k">if</span> <span class="nx">@_killTimeout</span><span class="o">?</span>
+    <span class="vi">@_child = </span><span class="kc">null</span>
+    <span class="vi">@state = </span><span class="s">&#39;ready&#39;</span>
+
+  <span class="nv">_message: </span><span class="nf">(msg) -&gt;</span>
+    <span class="nx">@debug</span> <span class="s">&quot;_message: </span><span class="si">#{</span><span class="nx">msg</span><span class="si">}</span><span class="s">&quot;</span>
+    <span class="vi">@state = </span><span class="s">&#39;open&#39;</span> <span class="k">if</span> <span class="nx">msg</span> <span class="o">is</span> <span class="s">&#39;started&#39;</span>
+    <span class="nx">@_child</span><span class="p">.</span><span class="nx">send</span> <span class="s">&#39;exit&#39;</span> <span class="k">if</span> <span class="nx">msg</span> <span class="o">is</span> <span class="s">&#39;ended&#39;</span>
+
+  <span class="nv">close: </span><span class="nf">-&gt;</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nb">Error</span> <span class="s">&#39;not open&#39;</span> <span class="k">if</span> <span class="nx">@state</span> <span class="o">is</span> <span class="s">&#39;ready&#39;</span>
+    <span class="nx">@debug</span> <span class="s">&#39;close&#39;</span>
+    <span class="vi">@state = </span><span class="s">&#39;closing&#39;</span>
+    <span class="k">return</span> <span class="nx">Q</span><span class="p">.</span><span class="nx">fcall</span><span class="p">(</span><span class="o">=&gt;</span> <span class="vi">@state = </span><span class="s">&#39;ready&#39;</span><span class="p">)</span> <span class="k">unless</span> <span class="nx">@_child</span><span class="o">?</span>
+    <span class="nv">deferred = </span><span class="nx">Q</span><span class="p">.</span><span class="nx">defer</span><span class="p">()</span>
+    <span class="nx">@_child</span><span class="p">.</span><span class="nx">on</span> <span class="s">&#39;exit&#39;</span><span class="p">,</span> <span class="o">=&gt;</span>
+      <span class="nx">@debug</span> <span class="s">&#39;close resolved&#39;</span>
+      <span class="nx">deferred</span><span class="p">.</span><span class="nx">resolve</span> <span class="kc">true</span>
+    <span class="nx">@_child</span><span class="p">.</span><span class="nx">send</span> <span class="s">&#39;stop&#39;</span>
+    <span class="nx">@_killLater</span><span class="p">()</span>
+    <span class="nx">deferred</span><span class="p">.</span><span class="nx">promise</span>
+
+  <span class="nv">_killLater: </span><span class="nf">-&gt;</span>
+    <span class="k">return</span> <span class="kc">false</span> <span class="k">if</span> <span class="nx">@_killTimeout</span><span class="o">?</span>
+    <span class="vi">@_killTimeout = </span><span class="nx">setTimeout</span> <span class="o">=&gt;</span>
+      <span class="vi">@_killTimeout = </span><span class="kc">null</span>
+      <span class="nx">@debug</span> <span class="s">&#39;force killing&#39;</span>
+      <span class="nx">@_child</span><span class="p">.</span><span class="nx">kill</span><span class="p">()</span>
+    <span class="p">,</span> <span class="mi">30000</span>
+
+<span class="nv">module.exports = </span><span class="nx">Simulator</span></div></div></div></div></body></html>
