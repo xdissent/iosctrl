@@ -32,7 +32,8 @@ Session.addMethod 'start', 'v@:', (self) ->
   args = self.ivar('args') ? $.NSMutableArray 'arrayWithCapacity', 0
   err = self.ivar('err') ? $ '/tmp/iosctrl.err'
   out = self.ivar('out') ? $ '/tmp/iosctrl.out'
-  fam = $ if (self.ivar('family') ? '').toLowerCase() is 'ipad' then 2 else 1
+  fam = $ 1
+  fam = $ 2 if (self.ivar('family') ? '').toString().toLowerCase() is 'ipad'
 
   # Create the simulator configuration.
   config = $.DTiPhoneSimulatorSessionConfig('alloc')('init') 'autorelease'
