@@ -1,6 +1,6 @@
 {
   "name": "iosctrl",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Node module for controlling the Xcode iOS Simulator",
   "main": "index.js",
   "scripts": {
