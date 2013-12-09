@@ -9,34 +9,37 @@ Q = require 'q'
 simPath = path.join __dirname, "sim#{path.extname __filename}"
 
 class Simulator
-  constructor: (url) ->
-    @debug 'new'
+  constructor: (@config={}) ->
+    return new Simulator arguments... unless @ instanceof Simulator
+    @debug 'new', @config
     @_child = null
-    @state = 'ready'
-    @open url if url?
+    @state = 'stopped'
 
   debug: ->
     @_debug ?= debug 'iosctrl:simulator'
     @_debug arguments...
 
-  open: (url) ->
-    throw new Error 'not ready' unless @state is 'ready'
-    @debug "open: #{url}"
-    @state = 'opening'
+  start: ->
+    throw new Error 'not stopped' unless @state is 'stopped'
+    @debug 'start'
+    @state = 'starting'
     deferred = Q.defer()
-    @_child = child_process.fork simPath, [url]
+    @_child = child_process.fork simPath
     exit = =>
-      @debug 'open rejected'
+      @debug 'start rejected'
       deferred.reject 'exited'
       @_exit()
     message = (msg) =>
-      if msg is 'started'
-        @_child.removeListener 'message', message
-        @_child.removeListener 'exit', exit
-        @_child.on 'message', @_message.bind @
-        @_child.on 'exit', @_exit.bind @
-        @debug 'open resolved'
-        deferred.resolve true
+      switch msg
+        when 'init'
+          @_child.send @config
+        when 'started'
+          @_child.removeListener 'message', message
+          @_child.removeListener 'exit', exit
+          @_child.on 'message', @_message.bind @
+          @_child.on 'exit', @_exit.bind @
+          @debug 'start resolved'
+          deferred.resolve true
       @_message msg
     @_child.on 'exit', exit
     @_child.on 'message', message
@@ -46,21 +49,21 @@ class Simulator
     @debug '_exit'
     clearTimeout @_killTimeout if @_killTimeout?
     @_child = null
-    @state = 'ready'
+    @state = 'stopped'
 
   _message: (msg) ->
     @debug "_message: #{msg}"
-    @state = 'open' if msg is 'started'
+    @state = 'started' if msg is 'started'
     @_child.send 'exit' if msg is 'ended'
 
-  close: ->
-    throw new Error 'not open' if @state is 'ready'
-    @debug 'close'
-    @state = 'closing'
-    return Q.fcall(=> @state = 'ready') unless @_child?
+  stop: ->
+    throw new Error 'not started' if @state is 'stopped'
+    @debug 'stop'
+    @state = 'stopping'
+    return Q.fcall(=> @state = 'stopped') unless @_child?
     deferred = Q.defer()
     @_child.on 'exit', =>
-      @debug 'close resolved'
+      @debug 'stop resolved'
       deferred.resolve true
     @_child.send 'stop'
     @_killLater()
@@ -72,6 +75,6 @@ class Simulator
       @_killTimeout = null
       @debug 'force killing'
       @_child.kill()
-    , 30000
+    , 20000
 
 module.exports = Simulator

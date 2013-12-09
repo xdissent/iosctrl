@@ -10,12 +10,34 @@ pool = $.NSAutoreleasePool('alloc') 'init'
 
 # Create a session instance and set the URL.
 session = Session('alloc')('init') 'autorelease'
-session.ivar 'url', $ process.argv[2]
+
+configure = (config) ->
+  session.ivar 'app', $ config.app if config.app?
+  session.ivar 'sys', $ config.sys if config.sys?
+  if config.env?
+    env = $.NSMutableDictionary 'dictionary'
+    env 'setObject', $(k), 'forKey', $(v) for k, v of config.env
+    session.ivar 'env', env
+  if config.args?
+    args = $.NSMutableArray 'arrayWithCapacity', config.args.length
+    args 'addObject', $ v for v in config.args
+    session.ivar 'args', args
+  session.ivar 'err', $ config.err if config.err?
+  session.ivar 'out', $ config.out if config.out?
+  session.ivar 'family', $ config.family if config.family?
 
 # Listen for `message` events from the parent process and process them.
 process.on 'message', (msg) ->
-  session 'stop' if msg is 'stop'
-  shouldKeepRunning = false if msg is 'exit'
+  switch msg
+    when 'stop'
+      session 'stop'
+    when 'exit'
+      shouldKeepRunning = false
+    else
+      configure msg
+      session 'start'
+
+process.send 'init'
 
 # The main runloop.
 tick = ->
@@ -31,6 +53,5 @@ tick = ->
     pool 'drain'
     process.exit()
 
-# Start the session and begin the runloop.
-session 'start'
+# Begin the runloop.
 tick()
